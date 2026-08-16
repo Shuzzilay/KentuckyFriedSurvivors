@@ -1,4 +1,3 @@
-
 terraform {
   required_version = ">= 1.6"
   required_providers {
@@ -70,7 +69,6 @@ locals {
   github_subject    = "repo:${local.github_owner_name}@${var.github_owner_id}/${local.github_repo_name}@${var.github_repository_id}:*"
 }
 
-
 resource "aws_s3_bucket" "tfstate" {
   bucket = local.state_bucket
   lifecycle {
@@ -113,7 +111,6 @@ resource "aws_dynamodb_table" "tflock" {
   }
 }
 
-
 resource "aws_ecr_repository" "pz" {
   name                 = "${var.project}-server"
   image_tag_mutability = "IMMUTABLE" # Prevent :latest drift.
@@ -138,7 +135,6 @@ resource "aws_ecr_lifecycle_policy" "pz" {
     }]
   })
 }
-
 
 resource "aws_ecr_repository" "pz_backup" {
   name                 = "${var.project}-backup"
@@ -165,7 +161,6 @@ resource "aws_ecr_lifecycle_policy" "pz_backup" {
   })
 }
 
-
 resource "aws_ecr_repository" "pz_bootstrap" {
   name                 = "${var.project}-bootstrap"
   image_tag_mutability = "IMMUTABLE"
@@ -190,7 +185,6 @@ resource "aws_ecr_lifecycle_policy" "pz_bootstrap" {
     }]
   })
 }
-
 
 resource "aws_s3_bucket" "backups" {
   bucket = local.backup_bucket
@@ -240,7 +234,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
     }
   }
 }
-
 
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
@@ -305,7 +298,6 @@ resource "aws_iam_role_policy" "github_ecr_push" {
   role   = aws_iam_role.github_actions.id
   policy = data.aws_iam_policy_document.ecr_push.json
 }
-
 
 output "state_bucket" {
   value       = aws_s3_bucket.tfstate.id

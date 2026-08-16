@@ -85,16 +85,20 @@ DB="$WORK/servertest.db"
 sqlite3 "$DB" <<'EOF'
 CREATE TABLE role (id INTEGER PRIMARY KEY, name TEXT);
 INSERT INTO role (id, name) VALUES (2,'user'), (7,'admin');
-CREATE TABLE whitelist (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT, role INTEGER NOT NULL);
-INSERT INTO whitelist (username, role) VALUES ('test', 2), ('someoneelse', 2);
+CREATE TABLE whitelist (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, username TEXT, steamid TEXT, role INTEGER NOT NULL);
+INSERT INTO whitelist (username, steamid, role) VALUES
+    ('test', '76561197969138678', 2),
+    ('second-login', '76561197969138678', 2),
+    ('someoneelse', '76561198000000000', 2);
 EOF
 ADMIN_ROLE="$(sqlite3 "$DB" "SELECT id FROM role WHERE name='admin';")"
 check "admin role id" "$ADMIN_ROLE" "7"
-CHANGED="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE username='test'; SELECT changes();")"
-check "one row promoted"  "$CHANGED" "1"
-check "target is admin"   "$(sqlite3 "$DB" "SELECT role FROM whitelist WHERE username='test';")" "7"
-check "others untouched"  "$(sqlite3 "$DB" "SELECT role FROM whitelist WHERE username='someoneelse';")" "2"
-MISSING="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE username='ghost'; SELECT changes();")"
+CHANGED="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE steamid='76561197969138678'; SELECT changes();")"
+check "all Steam logins promoted" "$CHANGED" "2"
+check "first login is admin"      "$(sqlite3 "$DB" "SELECT role FROM whitelist WHERE username='test';")" "7"
+check "second login is admin"     "$(sqlite3 "$DB" "SELECT role FROM whitelist WHERE username='second-login';")" "7"
+check "others untouched"          "$(sqlite3 "$DB" "SELECT role FROM whitelist WHERE username='someoneelse';")" "2"
+MISSING="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE steamid='76561197999999999'; SELECT changes();")"
 check "absent user is a no-op" "$MISSING" "0"
 
 echo

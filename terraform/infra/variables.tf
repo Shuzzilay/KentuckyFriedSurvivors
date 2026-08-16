@@ -1,4 +1,3 @@
-
 variable "region" {
   description = "AWS region. Must match the bootstrap stack."
   type        = string
@@ -155,17 +154,22 @@ variable "base_map" {
   default     = "Muldraugh, KY"
 }
 
-variable "admin_users" {
+variable "admin_steam_ids" {
   description = <<-EOT
-    Accounts promoted to the admin role at container boot.
+    Authenticated SteamID64 values promoted to the admin role at container boot.
 
     B42 stores access level in the user DB (whitelist.role, an FK into the role
-    table where 7 = admin), not in the ini - the old accesslevel column is gone.
-    An account must have connected at least once before it can be promoted;
-    promotion of an unknown name logs a warning and is otherwise a no-op.
+    table where 7 = admin). Every existing login associated with a configured
+    Steam account is promoted, so the role applies regardless of character.
+    A Steam account must have connected at least once before it can be promoted.
   EOT
-  type        = list(string)
-  default     = ["test"]
+  type        = set(string)
+  default     = ["76561197969138678"]
+
+  validation {
+    condition     = alltrue([for id in var.admin_steam_ids : can(regex("^[0-9]{17}$", id))])
+    error_message = "Each admin Steam ID must be a 17-digit SteamID64 value."
+  }
 }
 
 variable "server_password_parameter" {

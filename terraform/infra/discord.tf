@@ -1,4 +1,3 @@
-
 locals {
   discord_enabled = var.discord_public_key != ""
 }
@@ -10,7 +9,6 @@ data "archive_file" "discord" {
 
   excludes = ["register-commands.mjs"]
 }
-
 
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
@@ -120,7 +118,6 @@ resource "aws_iam_role_policy" "discord" {
   policy = data.aws_iam_policy_document.discord.json
 }
 
-
 resource "aws_cloudwatch_log_group" "discord" {
   count             = local.discord_enabled ? 1 : 0
   name              = "/aws/lambda/${var.project}-discord"
@@ -169,7 +166,6 @@ resource "aws_lambda_function" "discord" {
 
   depends_on = [aws_cloudwatch_log_group.discord]
 }
-
 
 resource "aws_apigatewayv2_api" "discord" {
   count         = local.discord_enabled ? 1 : 0

@@ -1,8 +1,6 @@
-
 data "aws_ssm_parameter" "bottlerocket_ami" {
   name = "/aws/service/bottlerocket/aws-ecs-2/x86_64/latest/image_id"
 }
-
 
 resource "aws_ebs_volume" "data" {
   availability_zone = aws_subnet.public.availability_zone
@@ -15,11 +13,10 @@ resource "aws_ebs_volume" "data" {
   }
 
   tags = {
-    Name = "${var.project}-data"
+    Name      = "${var.project}-data"
     "pz:role" = "data"
   }
 }
-
 
 resource "aws_launch_template" "server" {
   name_prefix   = "${var.project}-"
@@ -52,7 +49,7 @@ resource "aws_launch_template" "server" {
   }
 
   metadata_options {
-    http_tokens = "required" # Bootstrap requires IMDSv2.
+    http_tokens                 = "required" # Bootstrap requires IMDSv2.
     http_put_response_hop_limit = 2
   }
 

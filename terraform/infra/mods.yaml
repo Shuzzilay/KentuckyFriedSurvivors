@@ -1,4 +1,3 @@
-
 mods:
   - name: that DAMN Library
     workshop_id: "3171167894"
@@ -57,3 +56,8 @@ mods:
     workshop_id: "3409723807"
     mod_ids:
       - UH-1BHelicopter
+
+  - name: Containers!
+    workshop_id: "2625625421"
+    mod_ids:
+      - isoContainers

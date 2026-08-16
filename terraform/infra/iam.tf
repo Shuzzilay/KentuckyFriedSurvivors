@@ -1,4 +1,3 @@
-
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
     effect  = "Allow"
@@ -20,7 +19,6 @@ data "aws_iam_policy_document" "ecs_tasks_assume" {
     }
   }
 }
-
 
 resource "aws_iam_role" "instance" {
   name               = "${var.project}-instance"
@@ -60,6 +58,32 @@ resource "aws_iam_role_policy" "instance_volume" {
   policy = data.aws_iam_policy_document.instance_volume.json
 }
 
+data "aws_iam_policy_document" "instance_eip" {
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:DescribeAddresses"]
+    resources = ["*"]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["ec2:AssociateAddress"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "ec2:AllocationId"
+      values   = [aws_eip.server.id]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "instance_eip" {
+  name   = "associate-server-eip"
+  role   = aws_iam_role.instance.id
+  policy = data.aws_iam_policy_document.instance_eip.json
+}
+
 data "aws_iam_policy_document" "instance_ecr_pull" {
   statement {
     effect    = "Allow"
@@ -87,7 +111,6 @@ resource "aws_iam_instance_profile" "instance" {
   name = "${var.project}-instance"
   role = aws_iam_role.instance.name
 }
-
 
 resource "aws_iam_role" "execution" {
   name               = "${var.project}-task-execution"
@@ -118,7 +141,6 @@ resource "aws_iam_role_policy" "execution_secrets" {
   role   = aws_iam_role.execution.id
   policy = data.aws_iam_policy_document.execution_secrets.json
 }
-
 
 resource "aws_iam_role" "task" {
   name               = "${var.project}-task"

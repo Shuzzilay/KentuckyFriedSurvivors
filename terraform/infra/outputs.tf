@@ -1,11 +1,6 @@
-
-output "server_ip_lookup" {
-  description = "How to find the current public IP to give players."
-  value       = <<-EOT
-    aws ec2 describe-instances \
-      --filters "Name=tag:Name,Values=${var.project}-server" "Name=instance-state-name,Values=running" \
-      --query 'Reservations[].Instances[].PublicIpAddress' --output text
-  EOT
+output "server_public_ip" {
+  description = "Static Elastic IP for player connections."
+  value       = aws_eip.server.public_ip
 }
 
 output "cluster_name" {

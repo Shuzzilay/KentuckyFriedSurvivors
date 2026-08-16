@@ -1,4 +1,3 @@
-
 resource "aws_vpc" "main" {
   cidr_block           = "10.42.0.0/16"
   enable_dns_support   = true
@@ -10,6 +9,15 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "${var.project}-igw" }
+}
+
+resource "aws_eip" "server" {
+  domain = "vpc"
+
+  tags = {
+    Name      = "${var.project}-server"
+    "pz:role" = "server-public"
+  }
 }
 
 data "aws_availability_zones" "available" {
@@ -40,7 +48,6 @@ resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
-
 
 resource "aws_security_group" "server" {
   name        = "${var.project}-server"

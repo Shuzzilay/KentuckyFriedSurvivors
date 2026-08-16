@@ -1,4 +1,3 @@
-
 resource "aws_ecs_cluster" "main" {
   name = var.project
 
@@ -12,7 +11,6 @@ resource "aws_cloudwatch_log_group" "server" {
   name              = "/ecs/${var.project}"
   retention_in_days = var.log_retention_days
 }
-
 
 locals {
   host_data_path = "/mnt/pz-data"
@@ -86,8 +84,8 @@ resource "aws_ecs_task_definition" "server" {
       }
     },
     {
-      name  = "backup"
-      image = local.backup_image
+      name      = "backup"
+      image     = local.backup_image
       essential = false
       memory    = 512
 
@@ -115,7 +113,6 @@ resource "aws_ecs_task_definition" "server" {
     },
   ])
 }
-
 
 resource "aws_ecs_service" "server" {
   name            = var.project

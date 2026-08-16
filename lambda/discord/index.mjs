@@ -1,4 +1,3 @@
-
 import { createPublicKey, verify } from "node:crypto";
 import {
   ECSClient,
@@ -156,7 +155,6 @@ async function handleStatus() {
 
   return reply(`${line}\n${details.join(" · ")}`);
 }
-
 
 const ago = (date) => {
   const mins = Math.floor((Date.now() - new Date(date).getTime()) / 60000);

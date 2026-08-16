@@ -168,8 +168,8 @@ patch_config() {
 patch_config
 
 promote_admins() {
-    local users="${PZ_ADMIN_USERS:-}"
-    [[ -n "$users" ]] || return 0
+    local steam_ids="${PZ_ADMIN_STEAM_IDS:-}"
+    [[ -n "$steam_ids" ]] || return 0
 
     if [[ ! -f "$USER_DB" ]]; then
         log "WARNING: ${USER_DB} does not exist yet - skipping admin promotion."
@@ -180,19 +180,21 @@ promote_admins() {
     admin_role="$(sqlite3 "$USER_DB" "SELECT id FROM role WHERE name='admin';")"
     [[ -n "$admin_role" ]] || die "No 'admin' role found in ${USER_DB}."
 
-    local u changed
-    IFS=',' read -ra _admin_users <<<"$users"
-    for u in "${_admin_users[@]}"; do
-        u="$(printf '%s' "$u" | tr -d '[:space:]')"
-        [[ -n "$u" ]] || continue
+    local steam_id changed
+    IFS=',' read -ra _admin_steam_ids <<<"$steam_ids"
+    for steam_id in "${_admin_steam_ids[@]}"; do
+        steam_id="$(printf '%s' "$steam_id" | tr -d '[:space:]')"
+        [[ -n "$steam_id" ]] || continue
+        [[ "$steam_id" =~ ^[0-9]{17}$ ]] \
+            || die "Invalid admin SteamID64 '${steam_id}'."
 
         changed="$(sqlite3 "$USER_DB" \
-            "UPDATE whitelist SET role=${admin_role} WHERE username='${u//\'/\'\'}'; SELECT changes();")"
+            "UPDATE whitelist SET role=${admin_role} WHERE steamid='${steam_id}'; SELECT changes();")"
 
         if [[ "$changed" == "0" ]]; then
-            log "WARNING: no account named '${u}' in the whitelist - it must connect once before it can be promoted."
+            log "WARNING: no login for SteamID64 '${steam_id}' exists yet - it must connect once before it can be promoted."
         else
-            log "Granted admin (role ${admin_role}) to '${u}'."
+            log "Granted admin (role ${admin_role}) to ${changed} login(s) for SteamID64 '${steam_id}'."
         fi
     done
 }

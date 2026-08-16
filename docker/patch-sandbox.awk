@@ -1,4 +1,3 @@
-
 FILENAME == ARGV[1] {
     if ($0 == "" || $0 ~ /^#/) next
     eq = index($0, "=")

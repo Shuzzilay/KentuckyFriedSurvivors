@@ -4,6 +4,8 @@ set -euo pipefail
 
 VOLUME_TAG_KEY="${PZ_VOLUME_TAG_KEY:-pz:role}"
 VOLUME_TAG_VALUE="${PZ_VOLUME_TAG_VALUE:-data}"
+EIP_TAG_KEY="${PZ_EIP_TAG_KEY:-pz:role}"
+EIP_TAG_VALUE="${PZ_EIP_TAG_VALUE:-server-public}"
 
 REQUESTED_DEVICE="${PZ_ATTACH_DEVICE:-/dev/xvdf}"
 
@@ -32,6 +34,29 @@ AZ="$(imds placement/availability-zone)" || die "could not read availability-zon
 export AWS_DEFAULT_REGION="${AZ%?}"   # Strip AZ suffix.
 
 log "instance=${INSTANCE_ID} az=${AZ} region=${AWS_DEFAULT_REGION}"
+
+EIP_ALLOCATION_ID="$(aws ec2 describe-addresses \
+    --filters "Name=tag:${EIP_TAG_KEY},Values=${EIP_TAG_VALUE}" \
+    --query 'Addresses[0].AllocationId' --output text)" \
+    || die "describe-addresses failed (is ec2:DescribeAddresses on the instance role?)"
+
+[[ "$EIP_ALLOCATION_ID" != "None" && -n "$EIP_ALLOCATION_ID" ]] \
+    || die "no Elastic IP tagged ${EIP_TAG_KEY}=${EIP_TAG_VALUE}"
+
+EIP_ATTACHED_TO="$(aws ec2 describe-addresses \
+    --allocation-ids "$EIP_ALLOCATION_ID" \
+    --query 'Addresses[0].InstanceId' --output text)"
+
+if [[ "$EIP_ATTACHED_TO" == "$INSTANCE_ID" ]]; then
+    log "Elastic IP ${EIP_ALLOCATION_ID} already associated with this instance"
+else
+    log "associating Elastic IP ${EIP_ALLOCATION_ID} with ${INSTANCE_ID}"
+    aws ec2 associate-address \
+        --allocation-id "$EIP_ALLOCATION_ID" \
+        --instance-id "$INSTANCE_ID" \
+        --allow-reassociation >/dev/null \
+        || die "associate-address failed (is ec2:AssociateAddress on the instance role?)"
+fi
 
 VOLUME_ID="$(aws ec2 describe-volumes \
     --filters "Name=tag:${VOLUME_TAG_KEY},Values=${VOLUME_TAG_VALUE}" \

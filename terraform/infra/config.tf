@@ -1,4 +1,3 @@
-
 locals {
   sandbox_raw = yamldecode(file("${path.module}/${var.sandbox_config_file}"))
 
@@ -28,9 +27,9 @@ locals {
       name  = "PZ_SANDBOX_${replace(k, ".", "__")}"
       value = v
     }],
-    length(var.admin_users) > 0 ? [{
-      name  = "PZ_ADMIN_USERS"
-      value = join(",", var.admin_users)
+    length(var.admin_steam_ids) > 0 ? [{
+      name  = "PZ_ADMIN_STEAM_IDS"
+      value = join(",", var.admin_steam_ids)
     }] : [],
   )
 

@@ -1,22 +1,9 @@
-
-
 CharacterFreePoints: "6"
-
-
 StartTime: "1"
-
-
 MultiHitZombies: "true"
-
-
 ZombieLore.Transmission: "2"
-
-
 MultiplierConfig.Global: "5.0"
-
+MultiplierConfig.Fishing: "5.0"
 MinutesPerPage: "1.0"
-
-
 GeneratorTileRange: "30"
-
 GeneratorVerticalPowerRange: "4"
