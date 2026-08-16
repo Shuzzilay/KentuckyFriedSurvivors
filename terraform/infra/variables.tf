@@ -106,7 +106,7 @@ variable "ini_settings" {
   EOT
   type        = map(string)
   default = {
-    PublicName                = "Derp Enterprise"
+    PublicName                = "Kentucky Fried Survivors"
     PublicDescription         = "Here be derp"
     ServerWelcomeMessage      = "If you're reading this, you're gay."
     Public                    = "true"
