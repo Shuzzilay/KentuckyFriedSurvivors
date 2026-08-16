@@ -9,7 +9,17 @@ mods:
     workshop_id: "3399660368"
     mod_ids:
       - WarThunderVehicleLibrary
-    notes: Required by the UH-1B Helicopter mod.
+    notes: >-
+      Was the UH-1B's dependency until the 2026-08-14 update repointed it at
+      AviationCore. Kept because nothing has confirmed it is unused.
+
+  - name: "[B42]Aviation Core (Beta)"
+    workshop_id: "3783444342"
+    mod_ids:
+      - AviationCore
+    notes: >-
+      require= line of the UH-1B's own mod.info. Without it the helicopter
+      downloads and is silently skipped at load.
 
   - name: Propane Tank Refill
     workshop_id: "3780731664"
