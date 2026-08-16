@@ -37,6 +37,7 @@ services:
       PZ_SANDBOX_ZombieLore__Transmission: "2"
 
       PZ_ADMIN_STEAM_IDS: "76561197969138678"
+      PZ_ADMIN_USERS: "test"
 
     deploy:
       resources:

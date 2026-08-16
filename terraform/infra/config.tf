@@ -31,6 +31,10 @@ locals {
       name  = "PZ_ADMIN_STEAM_IDS"
       value = join(",", var.admin_steam_ids)
     }] : [],
+    length(var.admin_users) > 0 ? [{
+      name  = "PZ_ADMIN_USERS"
+      value = join(",", var.admin_users)
+    }] : [],
   )
 
   pz_config_secrets = concat(

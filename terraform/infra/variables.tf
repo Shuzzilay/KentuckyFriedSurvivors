@@ -172,6 +172,25 @@ variable "admin_steam_ids" {
   }
 }
 
+variable "admin_users" {
+  description = <<-EOT
+    Account logins promoted to the admin role at container boot, applied in
+    addition to admin_steam_ids rather than instead of it.
+
+    This matches whitelist.username, the account login - not the in-game
+    character name, which is stored separately and is not what PZ authorises
+    against. Promoting the account covers every character under it.
+
+    Both paths carry the same connect-once requirement: a login has no
+    whitelist row until it has joined at least once, so promotion of an unknown
+    name logs a warning and is otherwise a no-op. Kept alongside the Steam ID
+    path because it matches a value the operator controls directly, so it still
+    works when the Steam ID is wrong or whitelist.steamid is unpopulated.
+  EOT
+  type        = set(string)
+  default     = ["Shuzzilay"]
+}
+
 variable "server_password_parameter" {
   description = <<-EOT
     Optional SSM SecureString name holding the server join password, injected as

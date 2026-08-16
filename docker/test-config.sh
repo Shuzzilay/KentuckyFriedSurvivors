@@ -101,6 +101,20 @@ check "others untouched"          "$(sqlite3 "$DB" "SELECT role FROM whitelist W
 MISSING="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE steamid='76561197999999999'; SELECT changes();")"
 check "absent user is a no-op" "$MISSING" "0"
 
+echo "[test] admin promotion by account login, independent of the Steam ID path"
+sqlite3 "$DB" "UPDATE whitelist SET role=2;"
+NAMED="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE username='someoneelse'; SELECT changes();")"
+check "named login promoted"   "$NAMED" "1"
+check "named login is admin"   "$(sqlite3 "$DB" "SELECT role FROM whitelist WHERE username='someoneelse';")" "7"
+check "steam logins untouched" "$(sqlite3 "$DB" "SELECT count(*) FROM whitelist WHERE role=7;")" "1"
+ABSENT="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE username='nobody'; SELECT changes();")"
+check "absent login is a no-op" "$ABSENT" "0"
+
+# A login containing an apostrophe must not break the UPDATE that quotes it.
+sqlite3 "$DB" "INSERT INTO whitelist (username, steamid, role) VALUES ('O''Brien', '76561198000000001', 2);"
+QUOTED="$(sqlite3 "$DB" "UPDATE whitelist SET role=${ADMIN_ROLE} WHERE username='O''Brien'; SELECT changes();")"
+check "apostrophe login promoted" "$QUOTED" "1"
+
 echo
 echo "[test] ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]

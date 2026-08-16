@@ -167,9 +167,17 @@ patch_config() {
 }
 patch_config
 
+# Two independent promotion paths, deliberately. SteamID64 is the durable one -
+# it survives a login rename and covers every character on the account - but it
+# can only match a whitelist row that already carries a steamid, which a freshly
+# wiped DB does not until the account has connected once. The username path has
+# the same connect-once requirement but matches on a value the operator chooses,
+# so it still works if the Steam ID is wrong or the column is unpopulated.
+# Neither is a fallback for the other; both run, and each reports separately.
 promote_admins() {
     local steam_ids="${PZ_ADMIN_STEAM_IDS:-}"
-    [[ -n "$steam_ids" ]] || return 0
+    local users="${PZ_ADMIN_USERS:-}"
+    [[ -n "$steam_ids" || -n "$users" ]] || return 0
 
     if [[ ! -f "$USER_DB" ]]; then
         log "WARNING: ${USER_DB} does not exist yet - skipping admin promotion."
@@ -195,6 +203,24 @@ promote_admins() {
             log "WARNING: no login for SteamID64 '${steam_id}' exists yet - it must connect once before it can be promoted."
         else
             log "Granted admin (role ${admin_role}) to ${changed} login(s) for SteamID64 '${steam_id}'."
+        fi
+    done
+
+    # Matches whitelist.username, which is the account login - not the in-game
+    # character name. Promoting the account covers all of its characters.
+    local user
+    IFS=',' read -ra _admin_users <<<"$users"
+    for user in "${_admin_users[@]}"; do
+        user="$(printf '%s' "$user" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+        [[ -n "$user" ]] || continue
+
+        changed="$(sqlite3 "$USER_DB" \
+            "UPDATE whitelist SET role=${admin_role} WHERE username='${user//\'/\'\'}'; SELECT changes();")"
+
+        if [[ "$changed" == "0" ]]; then
+            log "WARNING: no account named '${user}' in the whitelist - it must connect once before it can be promoted."
+        else
+            log "Granted admin (role ${admin_role}) to account '${user}'."
         fi
     done
 }
