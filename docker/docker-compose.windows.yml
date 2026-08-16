@@ -1,0 +1,13 @@
+
+services:
+  pz:
+    volumes:
+      - pz-data:/zomboid
+      - pz-install:/opt/pzserver
+
+  backup:
+    volumes:
+      - pz-data:/zomboid
+
+volumes:
+  pz-data:

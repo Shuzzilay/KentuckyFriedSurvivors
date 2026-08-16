@@ -1,0 +1,100 @@
+name: build-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/build-image.yml'
+  pull_request:
+    paths:
+      - 'docker/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-2
+
+jobs:
+  test:
+    name: lint + shutdown test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck docker/entrypoint.sh docker/pz-console docker/test-shutdown.sh docker/test-config.sh docker/backup.sh docker/restore.sh docker/attach-and-mount.sh
+
+      - name: Graceful-shutdown harness
+        run: |
+          chmod +x docker/test-shutdown.sh
+          timeout 90 docker/test-shutdown.sh | tee /tmp/out
+          grep -q "PASS" /tmp/out
+
+      - name: Config-patcher harness
+        run: |
+          sudo apt-get install -y gawk sqlite3
+          chmod +x docker/test-config.sh
+          docker/test-config.sh
+
+      - name: Build image
+        run: docker build -t pz-server:ci docker/
+
+      - name: Build backup sidecar image
+        run: docker build -f docker/Dockerfile.backup -t pz-backup:ci docker/
+
+      - name: Build Bottlerocket bootstrap image
+        run: docker build -f docker/Dockerfile.bootstrap -t pz-bootstrap:ci docker/
+
+  push:
+    name: push to ECR
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push server image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: pz-server
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$REPOSITORY:$TAG" docker/
+          docker push "$REGISTRY/$REPOSITORY:$TAG"
+          echo "Pushed $REGISTRY/$REPOSITORY:$TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and push backup sidecar image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: pz-backup
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -f docker/Dockerfile.backup -t "$REGISTRY/$REPOSITORY:$TAG" docker/
+          docker push "$REGISTRY/$REPOSITORY:$TAG"
+          echo "Pushed $REGISTRY/$REPOSITORY:$TAG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build and push Bottlerocket bootstrap image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: pz-bootstrap
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -f docker/Dockerfile.bootstrap -t "$REGISTRY/$REPOSITORY:$TAG" docker/
+          docker push "$REGISTRY/$REPOSITORY:$TAG"
+          echo "Pushed $REGISTRY/$REPOSITORY:$TAG" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,10 @@
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+
+LABEL org.opencontainers.image.title="pz-bootstrap" \
+      org.opencontainers.image.description="Bottlerocket bootstrap container: attach/format/mount the PZ data volume"
+
+RUN dnf install -y awscli-2 e2fsprogs util-linux && dnf clean all
+
+COPY --chmod=0755 attach-and-mount.sh /usr/local/bin/attach-and-mount.sh
+
+ENTRYPOINT ["/usr/local/bin/attach-and-mount.sh"]

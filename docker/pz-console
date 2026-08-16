@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CONTROL_FIFO="${PZ_DATA_DIR:-/zomboid}/.pz-control"
+
+if [[ $# -eq 0 ]]; then
+    echo "usage: pz-console <command> [args...]" >&2
+    exit 64
+fi
+
+if [[ ! -p "$CONTROL_FIFO" ]]; then
+    echo "error: control FIFO not found at ${CONTROL_FIFO} - is the server running?" >&2
+    exit 69
+fi
+
+if ! timeout 5 bash -c "printf '%s\n' \"\$*\" > '$CONTROL_FIFO'" _ "$@"; then
+    echo "error: timed out writing to control FIFO (server not reading?)" >&2
+    exit 69
+fi
+
+echo "sent: $*  (check server logs for output)"

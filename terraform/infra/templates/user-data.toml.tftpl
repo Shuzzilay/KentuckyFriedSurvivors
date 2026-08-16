@@ -1,0 +1,10 @@
+
+[settings.ecs]
+cluster = "${cluster_name}"
+
+container-stop-timeout = "${container_stop_timeout}"
+
+[settings.bootstrap-containers.mount-pz-data]
+source = "${bootstrap_image}"
+mode = "always"
+essential = true

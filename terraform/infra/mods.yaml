@@ -1,0 +1,7 @@
+
+mods:
+  - name: Propane Tank Refill
+    workshop_id: "3780731664"
+    mod_ids:
+      - PropaneTankRefill
+    notes: MVP is unlimited propane; author plans a capped supply later.

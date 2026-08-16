@@ -1,0 +1,69 @@
+
+services:
+  pz:
+    build: .
+    image: project-zomboid-server:local
+    container_name: pz
+
+    stop_grace_period: 120s
+
+    restart: "no"   # Expose dev crashes.
+
+    ports:
+      - "16261:16261/udp"
+      - "16262:16262/udp"
+
+    volumes:
+      - ./zomboid-data:/zomboid
+      - pz-install:/opt/pzserver
+
+    environment:
+      PZ_ADMIN_PASSWORD: "change-me-before-you-forget"
+      PZ_SERVER_NAME: "servertest"
+      PZ_MEMORY: "6g"
+      PZ_UPDATE_ON_BOOT: "false"
+      PZ_STEAM_BRANCH: ""
+      PZ_SAVE_WAIT: "25"
+      PZ_QUIT_WAIT: "60"
+
+      PZ_INI_PublicName: "Derp Enterprise (local)"
+      PZ_INI_Public: "false"
+      PZ_INI_SpeedLimit: "100.0"
+
+      PZ_SANDBOX_CharacterFreePoints: "6"
+      PZ_SANDBOX_MultiHitZombies: "true"
+      PZ_SANDBOX_StartTime: "1"
+      PZ_SANDBOX_MinutesPerPage: "1.0"
+      PZ_SANDBOX_MultiplierConfig__Global: "5.0"
+      PZ_SANDBOX_ZombieLore__Transmission: "2"
+
+      PZ_ADMIN_USERS: "test"
+
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  backup:
+    profiles: ["backup"]
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    image: pz-backup-sidecar:local
+    container_name: pz-backup
+    depends_on:
+      - pz
+    restart: "no"
+
+    volumes:
+      - ./zomboid-data:/zomboid
+
+    environment:
+      PZ_BACKUP_BUCKET: "${PZ_BACKUP_BUCKET:?set PZ_BACKUP_BUCKET to test backups}"
+      PZ_BACKUP_INTERVAL: "900"   # 15 min
+      PZ_BACKUP_SAVE_WAIT: "20"
+      AWS_REGION: "${AWS_REGION:-us-east-2}"
+      AWS_PROFILE: "${AWS_PROFILE:-}"
+
+volumes:
+  pz-install:
