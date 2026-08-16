@@ -71,3 +71,12 @@ mods:
     workshop_id: "2625625421"
     mod_ids:
       - isoContainers
+
+  - name: Proximity Inventory
+    workshop_id: "2847184718"
+    mod_ids:
+      - ProximityInventory
+    notes: >-
+      Some of its toggles are described as coming from Mod Options
+      (2169435993), which is not configured here. Whether that is a hard
+      require= or only an optional integration is unverified.
