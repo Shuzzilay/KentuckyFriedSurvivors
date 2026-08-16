@@ -1,7 +1,59 @@
 
 mods:
+  - name: that DAMN Library
+    workshop_id: "3171167894"
+    mod_ids:
+      - damnlib
+    notes: Required framework for the KI5 vehicle mods.
+
+  - name: "[B42] WarThunderVehicleLibrary"
+    workshop_id: "3399660368"
+    mod_ids:
+      - WarThunderVehicleLibrary
+    notes: Required by the UH-1B Helicopter mod.
+
   - name: Propane Tank Refill
     workshop_id: "3780731664"
     mod_ids:
       - PropaneTankRefill
     notes: MVP is unlimited propane; author plans a capped supply later.
+
+  - name: Has Been Read
+    workshop_id: "2544353492"
+    mod_ids:
+      - P4HasBeenRead
+
+  - name: "'82 Oshkosh M911 + Military Semi-Trailers"
+    workshop_id: "2618213077"
+    mod_ids:
+      - 82oshkoshM911
+
+  - name: "'92 NISSAN Skyline GT-R (R32)"
+    workshop_id: "2846036306"
+    mod_ids:
+      - 92nissanGTR
+
+  - name: "'67 Shelby GT500 + Eleanor"
+    workshop_id: "3026723485"
+    mod_ids:
+      - 67gt500
+
+  - name: "'69 Chevrolet Camaro"
+    workshop_id: "2991201484"
+    mod_ids:
+      - 69camaro
+
+  - name: "'87 Chevrolet Suburban"
+    workshop_id: "3196180339"
+    mod_ids:
+      - 87chevySuburban
+
+  - name: "'88 Toyota Hilux"
+    workshop_id: "3435796523"
+    mod_ids:
+      - 88toyotaHilux
+
+  - name: "[B42] UH-1B Helicopter"
+    workshop_id: "3409723807"
+    mod_ids:
+      - UH-1BHelicopter
