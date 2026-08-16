@@ -5,21 +5,24 @@ mods:
       - damnlib
     notes: Required framework for the KI5 vehicle mods.
 
-  - name: "[B42] WarThunderVehicleLibrary"
-    workshop_id: "3399660368"
-    mod_ids:
-      - WarThunderVehicleLibrary
-    notes: >-
-      Was the UH-1B's dependency until the 2026-08-14 update repointed it at
-      AviationCore. Kept because nothing has confirmed it is unused.
-
-  - name: "[B42]Aviation Core (Beta)"
-    workshop_id: "3783444342"
-    mod_ids:
-      - AviationCore
-    notes: >-
-      require= line of the UH-1B's own mod.info. Without it the helicopter
-      downloads and is silently skipped at load.
+# The entire helicopter stack was removed on 2026-08-15:
+#
+#   [B42] WarThunderVehicleLibrary  Workshop 3399660368  id WarThunderVehicleLibrary
+#   [B42]Aviation Core (Beta)       Workshop 3783444342  id AviationCore
+#   [B42] UH-1B Helicopter          Workshop 3409723807  id UH-1BHelicopter
+#
+# The author repointed the helicopter from WarThunderVehicleLibrary to
+# AviationCore on 2026-08-14, and AviationCore also overrides
+# media/scripts/heli_sound.txt. The orphaned library kept its own per-tick
+# helicopter sound hook, whose target no longer existed, so
+# HeliSoundUpdate.lua:69 raised "Object tried to call nil in
+# helicopterVisualSoundUpdate" from IsoPlayer.update once per frame per player -
+# roughly 200k client Lua errors before it was caught.
+#
+# Only the library was implicated, but the whole stack went: it is a WIP beta
+# (modversion 0.1.5) whose dependencies moved once already and were never
+# verified in-world. Re-adding it means re-reading every mod.info require= line
+# first, not restoring these three entries from memory.
 
   - name: Propane Tank Refill
     workshop_id: "3780731664"
@@ -61,11 +64,6 @@ mods:
     workshop_id: "3435796523"
     mod_ids:
       - 88toyotaHilux
-
-  - name: "[B42] UH-1B Helicopter"
-    workshop_id: "3409723807"
-    mod_ids:
-      - UH-1BHelicopter
 
   - name: Containers!
     workshop_id: "2625625421"
