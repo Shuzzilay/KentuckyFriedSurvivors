@@ -23,22 +23,25 @@ variable "image_tag" {
 variable "update_on_boot" {
   description = <<-EOT
     Whether the container runs SteamCMD for the game build on start. Default
-    false: a restart must not silently change the game build or ingest new
-    Workshop mod versions, because a restart is the only moment either can
-    enter the world.
+    true: the server should track the client build, because clients auto-update
+    on Steam and a pinned server cannot refuse them. Once the client build
+    moves ahead, joins hang on the loading screen with no server-side error -
+    the handshake completes, "Connected new client" is logged, and nothing
+    follows. That is how 42.20.2 stranded this server on 2026-08-17, and a
+    restart did not fix it because a restart skipped SteamCMD entirely.
 
-    Updating is therefore a deliberate one-shot, not a standing setting:
-      terraform apply -var update_on_boot=true -var image_tag=<sha>
-    then apply again without it, so an unattended task replacement (crash,
-    instance failure) cannot pull a new build on its own.
+    This does not make updates automatic. SteamCMD runs on boot, so a new
+    build enters the world only when someone restarts, and restarts stay
+    human-initiated. The accepted exception is that ECS replaces a crashed
+    task on its own, and that replacement is a boot: an unattended restart
+    can therefore pull a build nobody chose the moment for.
 
-    Leaving this false pins the server while clients keep auto-updating on
-    Steam. Once the client build moves ahead, joins hang on the loading
-    screen with no server-side error - which is exactly how 42.20.2 stranded
-    this server on 2026-08-17.
+    Set false to pin the build deliberately - a mid-wipe freeze, or holding
+    back from a hotfix that is breaking things:
+      terraform apply -var update_on_boot=false -var image_tag=<sha>
   EOT
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "instance_type" {
