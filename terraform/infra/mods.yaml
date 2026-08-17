@@ -78,3 +78,48 @@ mods:
       Some of its toggles are described as coming from Mod Options
       (2169435993), which is not configured here. Whether that is a hard
       require= or only an optional integration is unverified.
+
+# Skill Recovery Journal and its two dependencies, added 2026-08-17. Listed in
+# dependency order, which is the order they reach Mods=: the alert system is
+# the root (errorMagnifier requires it too), then errorMagnifier, then the
+# journal itself.
+#
+# Both dependencies are hard require= on B42, verified from the B42 mod.info
+# in Chuckleberry-Finn/Skill-Recovery-Journal rather than from the Workshop
+# page's "Required items" list:
+#
+#   42.20.1/mod.info  require=\ChuckleberryFinnAlertSystem,\errorMagnifier,
+#   errorMagnifier    require=\ChuckleberryFinnAlertSystem,
+#
+# The journal's B42 mod.info also sets versionMin=42.20.1, satisfied by the
+# server's 42.20.3, and declares incompatible=BurdSurvivalJournals,
+# JeevesJournals,SkillRecoveryJournalRoyPatch - none of which are installed.
+
+  - name: Mod Update and Alert System
+    workshop_id: "3077900375"
+    mod_ids:
+      - ChuckleberryFinnAlertSystem
+    notes: >-
+      Dependency only, not a chosen feature. It is the notify-on-mod-update
+      family this project otherwise avoids, but it only raises in-game
+      notices - it cannot restart anything, so it does not touch the policy
+      that restarts stay human-initiated.
+
+  - name: Error Magnifier
+    workshop_id: "2896041179"
+    mod_ids:
+      - errorMagnifier
+    notes: >-
+      Dependency only. Its own description says "strictly for debugging
+      purposes, creates in-game popups to make error reporting clear and
+      easy" - so a mod throwing Lua errors becomes a popup every player
+      sees, not a line only the server log gets. Consider the ~200k-error
+      helicopter incident before assuming that is harmless.
+
+  - name: Skill Recovery Journal
+    workshop_id: "2503622437"
+    mod_ids:
+      - SkillRecoveryJournal
+    notes: >-
+      Craftable journals that record skill levels and restore them on a new
+      character after death.
