@@ -48,6 +48,8 @@ const ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID;
 const ECR_REPO = process.env.PZ_ECR_REPO;
 const METRIC_NAMESPACE = process.env.PZ_METRIC_NAMESPACE ?? "PZServer";
 
+const TASK_MEMORY_MB = Number(process.env.PZ_TASK_MEMORY_MB ?? 0);
+
 const LOG_GROUP = process.env.PZ_LOG_GROUP;
 const TICK_WINDOW_MS = Number(process.env.PZ_TICK_WINDOW_MS ?? 900_000);
 const TICK_NOMINAL_HZ = Number(process.env.PZ_TICK_NOMINAL_HZ ?? NOMINAL_HZ);
@@ -446,6 +448,53 @@ async function loadHealth() {
   return parts.join(" · ");
 }
 
+// Maximum, not Average: a simulation thread pinned for part of the hour is the
+// thing worth seeing, and averaging is what hides it in HostLoadPerCore.
+async function jvmHealth() {
+  const [cores, rssMb] = await Promise.all([
+    latestMetric("JvmCpuCores"),
+    latestMetric("JvmMemoryResidentMB"),
+  ]);
+
+  if (cores === null && rssMb === null) {
+    return `⚪ **JVM** no recent metric — ${await metricAbsenceReason("JvmCpuCores")}.`;
+  }
+
+  const parts = [];
+
+  if (cores !== null) {
+    // PZ simulates on one thread, so ~1.00 core is that thread saturated.
+    const icon = cores >= 0.95 ? "🔴" : cores >= 0.7 ? "🟡" : "🟢";
+    const note = cores >= 0.95 ? " (one core saturated)" : "";
+    parts.push(`${icon} **JVM** ${cores.toFixed(2)} cores${note}`);
+  }
+
+  if (rssMb !== null) {
+    // The container limit is a hard cap; crossing it is an OOM kill, not slowness.
+    const pct = TASK_MEMORY_MB > 0 ? (rssMb / TASK_MEMORY_MB) * 100 : 0;
+    const icon = pct >= 90 ? "🔴" : pct >= 80 ? "🟡" : "🟢";
+    const label = `${Math.round(rssMb).toLocaleString("en-US")} MB resident`;
+    parts.push(
+      TASK_MEMORY_MB > 0
+        ? `${icon} ${label} (${pct.toFixed(0)}% of ${TASK_MEMORY_MB} MB)`
+        : `${icon} ${label}`,
+    );
+  }
+
+  return parts.join(" · ");
+}
+
+async function serverLogsHealth() {
+  const mb = await latestMetric("ServerLogsMB");
+
+  if (mb === null) {
+    return `⚪ **Server logs** no recent metric — ${await metricAbsenceReason("ServerLogsMB")}.`;
+  }
+
+  const icon = mb >= 5000 ? "🔴" : mb >= 2000 ? "🟡" : "🟢";
+  return `${icon} **Server logs** ${Math.round(mb).toLocaleString("en-US")} MB on the volume`;
+}
+
 async function diskHealth() {
   const raw = await latestMetric("DataVolumeUsedPercent");
 
@@ -497,9 +546,11 @@ async function handleInfraStatus() {
     ["ECR", () => ecrHealth(deployment?.deployedTag)],
     ["Host", instanceHealth],
     ["Load", loadHealth],
+    ["JVM", jvmHealth],
     ["Tick", tickHealth],
     ["World volume", volumeHealth],
     ["Disk", diskHealth],
+    ["Server logs", serverLogsHealth],
     ["ECS agent", agentHealth],
     ["Backups", backupHealth],
   ];

@@ -14,6 +14,10 @@ resource "aws_cloudwatch_log_group" "server" {
 
 locals {
   host_data_path = "/mnt/pz-data"
+
+  # Hard cap on the pz container. Shared with the Discord Lambda so it can
+  # report resident memory as a fraction of the limit that would OOM-kill it.
+  pz_container_memory_mb = 12288
 }
 
 resource "aws_ecs_task_definition" "server" {
@@ -49,7 +53,7 @@ resource "aws_ecs_task_definition" "server" {
       image     = local.server_image
       essential = true
 
-      memory = 12288
+      memory = local.pz_container_memory_mb
 
       stopTimeout = var.task_stop_timeout_seconds
 

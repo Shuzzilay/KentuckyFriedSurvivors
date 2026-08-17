@@ -171,6 +171,7 @@ resource "aws_lambda_function" "discord" {
       PZ_LOG_GROUP       = aws_cloudwatch_log_group.server.name
       PZ_TICK_WINDOW_MS  = "900000"
       PZ_TICK_NOMINAL_HZ = "10"
+      PZ_TASK_MEMORY_MB  = tostring(local.pz_container_memory_mb)
 
       PZ_MOD_CATALOGUE = jsonencode([
         for m in local.mods : {
