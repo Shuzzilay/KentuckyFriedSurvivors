@@ -62,7 +62,7 @@ resource "aws_ecs_task_definition" "server" {
       environment = concat([
         { name = "PZ_SERVER_NAME", value = var.server_name },
         { name = "PZ_MEMORY", value = var.pz_memory },
-        { name = "PZ_UPDATE_ON_BOOT", value = "false" },
+        { name = "PZ_UPDATE_ON_BOOT", value = tostring(var.update_on_boot) },
         { name = "PZ_SAVE_WAIT", value = "25" },
         { name = "PZ_QUIT_WAIT", value = "60" },
       ], local.pz_config_environment)

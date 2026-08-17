@@ -20,6 +20,27 @@ variable "image_tag" {
   type        = string
 }
 
+variable "update_on_boot" {
+  description = <<-EOT
+    Whether the container runs SteamCMD for the game build on start. Default
+    false: a restart must not silently change the game build or ingest new
+    Workshop mod versions, because a restart is the only moment either can
+    enter the world.
+
+    Updating is therefore a deliberate one-shot, not a standing setting:
+      terraform apply -var update_on_boot=true -var image_tag=<sha>
+    then apply again without it, so an unattended task replacement (crash,
+    instance failure) cannot pull a new build on its own.
+
+    Leaving this false pins the server while clients keep auto-updating on
+    Steam. Once the client build moves ahead, joins hang on the loading
+    screen with no server-side error - which is exactly how 42.20.2 stranded
+    this server on 2026-08-17.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "instance_type" {
   description = <<-EOT
     PZ is largely single-threaded and x86_64-only (no Graviton). Prefer fast
