@@ -7,7 +7,7 @@ data "archive_file" "discord" {
   source_dir  = "${path.module}/../../lambda/discord"
   output_path = "${path.module}/.terraform/discord-lambda.zip"
 
-  excludes = ["register-commands.mjs"]
+  excludes = ["register-commands.mjs", "a2s.test.mjs"]
 }
 
 data "aws_iam_policy_document" "lambda_assume" {
@@ -149,6 +149,12 @@ resource "aws_lambda_function" "discord" {
       PZ_BACKUP_INTERVAL   = tostring(var.backup_interval)
       PZ_ECR_REPO          = "${var.project}-server"
       PZ_METRIC_NAMESPACE  = var.metric_namespace
+
+      # PZ answers Steam A2S queries on the game port, so server-status can ask
+      # the server itself who is connected. The budget covers two round trips
+      # per query and must stay well inside Discord's 3s interaction window.
+      PZ_QUERY_PORT      = "16261"
+      PZ_QUERY_BUDGET_MS = "1500"
 
       PZ_MOD_CATALOGUE = jsonencode([
         for m in local.mods : {

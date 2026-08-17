@@ -21,6 +21,7 @@ import {
   DescribeVolumesCommand,
 } from "@aws-sdk/client-ec2";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { queryServer, describePlayers, DEFAULT_PORT } from "./a2s.mjs";
 
 const CLUSTER = process.env.PZ_CLUSTER;
 const SERVICE = process.env.PZ_SERVICE;
@@ -36,6 +37,9 @@ const ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID;
 
 const ECR_REPO = process.env.PZ_ECR_REPO;
 const METRIC_NAMESPACE = process.env.PZ_METRIC_NAMESPACE ?? "PZServer";
+
+const QUERY_PORT = Number(process.env.PZ_QUERY_PORT ?? DEFAULT_PORT);
+const QUERY_BUDGET_MS = Number(process.env.PZ_QUERY_BUDGET_MS ?? 1500);
 
 const MOD_CATALOGUE = (() => {
   const map = new Map();
@@ -132,6 +136,11 @@ const deploymentInProgress = (service) =>
     (d) => d.status === "PRIMARY" && d.rolloutState === "IN_PROGRESS",
   );
 
+const playerLine = async (ip) =>
+  describePlayers(
+    await queryServer(ip, { port: QUERY_PORT, budgetMs: QUERY_BUDGET_MS }),
+  );
+
 async function handleStatus() {
   const service = await describeService();
   if (!service) return reply("Could not find the server's ECS service.");
@@ -147,13 +156,28 @@ async function handleStatus() {
   else line = "🔴 **Down** - no task running.";
 
   const details = [`tasks: ${running}/${desired}`];
+  const extra = [];
 
   if (running >= 1 && !restarting) {
     const ip = await publicIp();
-    if (ip) details.push(`address: \`${ip}:16261\``);
+    if (ip) {
+      details.push(`address: \`${ip}:${QUERY_PORT}\``);
+
+      // A running task is not a joinable server: the query port stays silent
+      // until PZ has loaded the world, so report the failure rather than hide it.
+      try {
+        extra.push(await playerLine(ip));
+      } catch (err) {
+        console.error("player query failed", err);
+        extra.push(
+          "👥 **Players** the game port is not answering yet - the world is " +
+            "probably still loading. Try again in a minute.",
+        );
+      }
+    }
   }
 
-  return reply(`${line}\n${details.join(" · ")}`);
+  return reply([`${line}\n${details.join(" · ")}`, ...extra].join("\n"));
 }
 
 const ago = (date) => {
