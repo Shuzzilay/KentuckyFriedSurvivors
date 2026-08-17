@@ -2,8 +2,15 @@ CharacterFreePoints: "6"
 StartTime: "1"
 MultiHitZombies: "true"
 ZombieLore.Transmission: "2"
-MultiplierConfig.Global: "5.0"
+MultiplierConfig.Global: "7.0"
 MultiplierConfig.Fishing: "5.0"
-MinutesPerPage: "1.0"
+MinutesPerPage: "0.4"
 GeneratorTileRange: "30"
 GeneratorVerticalPowerRange: "4"
+
+# Set in-game on 2026-08-16 and recorded here on 2026-08-17. Unmanaged keys
+# survive a restart untouched, so these had drifted from the repo silently;
+# listing them means the entrypoint reasserts them on every boot instead.
+AmmoLootNew: "1.5"
+Map.AllowMiniMap: "true"
+ZombieLore.SprinterPercentage: "1"
