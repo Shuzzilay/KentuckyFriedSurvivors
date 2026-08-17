@@ -7,7 +7,7 @@ data "archive_file" "discord" {
   source_dir  = "${path.module}/../../lambda/discord"
   output_path = "${path.module}/.terraform/discord-lambda.zip"
 
-  excludes = ["register-commands.mjs", "a2s.test.mjs"]
+  excludes = ["register-commands.mjs", "a2s.test.mjs", "tickrate.test.mjs"]
 }
 
 data "aws_iam_policy_document" "lambda_assume" {
@@ -109,6 +109,15 @@ data "aws_iam_policy_document" "discord" {
     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["arn:aws:logs:${var.region}:${local.account_id}:*"]
   }
+
+  # Reading the server's own log group, which is where the tick counters live.
+  # Scoped to that one group rather than the wildcard above, which exists so the
+  # Lambda can write its own logs.
+  statement {
+    effect    = "Allow"
+    actions   = ["logs:FilterLogEvents"]
+    resources = ["${aws_cloudwatch_log_group.server.arn}:*"]
+  }
 }
 
 resource "aws_iam_role_policy" "discord" {
@@ -155,6 +164,13 @@ resource "aws_lambda_function" "discord" {
       # per query and must stay well inside Discord's 3s interaction window.
       PZ_QUERY_PORT      = "16261"
       PZ_QUERY_BUDGET_MS = "1500"
+
+      # Tick rate is read back out of the server's own log lines, which stamp a
+      # simulation-step counter and a millisecond clock on every entry. 15
+      # minutes is long enough to still yield two samples on a quiet server.
+      PZ_LOG_GROUP       = aws_cloudwatch_log_group.server.name
+      PZ_TICK_WINDOW_MS  = "900000"
+      PZ_TICK_NOMINAL_HZ = "10"
 
       PZ_MOD_CATALOGUE = jsonencode([
         for m in local.mods : {

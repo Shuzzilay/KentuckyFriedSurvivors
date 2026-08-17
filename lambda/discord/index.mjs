@@ -21,7 +21,17 @@ import {
   DescribeVolumesCommand,
 } from "@aws-sdk/client-ec2";
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import {
+  CloudWatchLogsClient,
+  FilterLogEventsCommand,
+} from "@aws-sdk/client-cloudwatch-logs";
 import { queryServer, describePlayers, DEFAULT_PORT } from "./a2s.mjs";
+import {
+  parseSamples,
+  measure,
+  describeTick,
+  NOMINAL_HZ,
+} from "./tickrate.mjs";
 
 const CLUSTER = process.env.PZ_CLUSTER;
 const SERVICE = process.env.PZ_SERVICE;
@@ -37,6 +47,10 @@ const ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID;
 
 const ECR_REPO = process.env.PZ_ECR_REPO;
 const METRIC_NAMESPACE = process.env.PZ_METRIC_NAMESPACE ?? "PZServer";
+
+const LOG_GROUP = process.env.PZ_LOG_GROUP;
+const TICK_WINDOW_MS = Number(process.env.PZ_TICK_WINDOW_MS ?? 900_000);
+const TICK_NOMINAL_HZ = Number(process.env.PZ_TICK_NOMINAL_HZ ?? NOMINAL_HZ);
 
 const QUERY_PORT = Number(process.env.PZ_QUERY_PORT ?? DEFAULT_PORT);
 const QUERY_BUDGET_MS = Number(process.env.PZ_QUERY_BUDGET_MS ?? 1500);
@@ -74,6 +88,7 @@ const ec2 = new EC2Client({});
 const s3 = new S3Client({});
 const ecr = new ECRClient({});
 const cw = new CloudWatchClient({});
+const cwLogs = new CloudWatchLogsClient({});
 
 const PING = 1;
 const APPLICATION_COMMAND = 2;
@@ -443,6 +458,29 @@ async function diskHealth() {
   return `${icon} **Disk** ${pct}% of the world volume used`;
 }
 
+// The rate is computed between two real log lines, so a truncated page is not a
+// correctness problem - it only shortens the window. The stream prefix keeps the
+// backup sidecar's lines out, and the filter keeps the page to lines that
+// actually carry the counters.
+async function tickHealth() {
+  if (!LOG_GROUP) {
+    return `⚪ **Tick** no reading - PZ_LOG_GROUP is not set`;
+  }
+
+  const out = await cwLogs.send(
+    new FilterLogEventsCommand({
+      logGroupName: LOG_GROUP,
+      logStreamNamePrefix: "pz/",
+      filterPattern: '"st:"',
+      startTime: Date.now() - TICK_WINDOW_MS,
+      limit: 500,
+    }),
+  );
+
+  const samples = parseSamples((out.events ?? []).map((e) => e.message));
+  return describeTick(measure(samples), TICK_NOMINAL_HZ);
+}
+
 async function handleInfraStatus() {
   let deployment = null;
   let deploymentLines = [];
@@ -459,6 +497,7 @@ async function handleInfraStatus() {
     ["ECR", () => ecrHealth(deployment?.deployedTag)],
     ["Host", instanceHealth],
     ["Load", loadHealth],
+    ["Tick", tickHealth],
     ["World volume", volumeHealth],
     ["Disk", diskHealth],
     ["ECS agent", agentHealth],
