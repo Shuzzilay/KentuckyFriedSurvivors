@@ -44,6 +44,16 @@ variable "update_on_boot" {
   default     = true
 }
 
+variable "server_log_retention_days" {
+  description = <<-EOT
+    Days of PZ's own logs to keep on the data volume. The server writes
+    DebugLog and per-run logs_<date> folders under Zomboid/Logs and never
+    prunes them, and they are not in the backup, so they only accumulate.
+  EOT
+  type        = number
+  default     = 7
+}
+
 variable "instance_type" {
   description = <<-EOT
     PZ is largely single-threaded and x86_64-only (no Graviton). Prefer fast

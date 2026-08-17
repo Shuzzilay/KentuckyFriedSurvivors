@@ -22,6 +22,10 @@ resource "aws_ecs_task_definition" "server" {
   execution_role_arn = aws_iam_role.execution.arn
   task_role_arn      = aws_iam_role.task.arn
 
+  # Lets the backup sidecar read /proc for the JVM, which is in the pz
+  # container. Without it the two have separate PID namespaces.
+  pid_mode = "task"
+
   requires_compatibilities = ["EC2"]
 
   runtime_platform {
@@ -65,6 +69,7 @@ resource "aws_ecs_task_definition" "server" {
         { name = "PZ_UPDATE_ON_BOOT", value = tostring(var.update_on_boot) },
         { name = "PZ_SAVE_WAIT", value = "25" },
         { name = "PZ_QUIT_WAIT", value = "60" },
+        { name = "PZ_GC_LOG", value = "true" },
       ], local.pz_config_environment)
 
       secrets = concat([
@@ -99,6 +104,7 @@ resource "aws_ecs_task_definition" "server" {
         { name = "PZ_BACKUP_INTERVAL", value = tostring(var.backup_interval) },
         { name = "PZ_BACKUP_SAVE_WAIT", value = "20" },
         { name = "PZ_METRIC_NAMESPACE", value = var.metric_namespace },
+        { name = "PZ_LOG_RETENTION_DAYS", value = tostring(var.server_log_retention_days) },
         { name = "AWS_REGION", value = var.region },
       ]
 

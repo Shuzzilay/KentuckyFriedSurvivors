@@ -17,6 +17,8 @@ STEAM_BRANCH="${PZ_STEAM_BRANCH:-}"
 
 UPDATE_ON_BOOT="${PZ_UPDATE_ON_BOOT:-false}"
 
+GC_LOG="${PZ_GC_LOG:-true}"
+
 SHUTDOWN_WARNING="${PZ_SHUTDOWN_WARNING:-Server shutting down - saving world}"
 SAVE_WAIT="${PZ_SAVE_WAIT:-25}"       # Save delay
 QUIT_WAIT="${PZ_QUIT_WAIT:-60}"       # JVM exit timeout
@@ -90,6 +92,24 @@ patch_heap() {
     fi
 }
 patch_heap
+
+# One line per collection, to stdout so it rides the awslogs driver and never
+# touches the volume. ProjectZomboid64.json persists, so this must be idempotent.
+patch_gc_log() {
+    local json="${INSTALL_DIR}/ProjectZomboid64.json"
+
+    [[ "$GC_LOG" == "true" ]] || return 0
+    [[ -f "$json" ]] || return 0
+
+    if grep -q -- '-Xlog:gc' "$json"; then
+        log "GC logging already present in ProjectZomboid64.json"
+        return 0
+    fi
+
+    sed -i -E "s|^(\s*)(\"-Xmx[^\"]*\",?)|\1\"-Xlog:gc:stdout:time,level,tags\",\n\1\2|" "$json"
+    log "Enabled -Xlog:gc in ProjectZomboid64.json"
+}
+patch_gc_log
 
 CONFIG_DIR="${DATA_DIR}/Zomboid/Server"
 INI_FILE="${CONFIG_DIR}/${SERVER_NAME}.ini"

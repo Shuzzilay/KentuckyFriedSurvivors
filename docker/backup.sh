@@ -13,6 +13,13 @@ SAVE_WAIT="${PZ_BACKUP_SAVE_WAIT:-20}"    # Flush delay
 
 METRIC_NAMESPACE="${PZ_METRIC_NAMESPACE:-PZServer}"
 
+LOG_DIR="${SAVE_ROOT}/Logs"
+LOG_RETENTION_DAYS="${PZ_LOG_RETENTION_DAYS:-7}"
+
+JVM_MATCH="${PZ_JVM_MATCH:-ProjectZomboid64}"
+CPU_SAMPLE_S="${PZ_CPU_SAMPLE_S:-10}"
+CLK_TCK=100   # USER_HZ. Constant on Linux x86_64; getconf is not in this image.
+
 log() { printf '[backup] %s\n' "$*" >&2; }
 
 flush_world() {
@@ -109,6 +116,82 @@ emit_host_metrics() {
     log "host: load ${load1} (${load_per_core}/core over ${cores}), memory ${mem_pct}% used"
 }
 
+put_metrics() {
+    aws cloudwatch put-metric-data \
+        --namespace "$METRIC_NAMESPACE" \
+        --metric-data "$@" 2>/dev/null
+}
+
+# Needs pid_mode=task on the task definition; the JVM lives in the pz container.
+find_jvm_pid() {
+    local p comm
+    for p in /proc/[0-9]*; do
+        comm="$(tr '\0' ' ' <"${p}/cmdline" 2>/dev/null)" || continue
+        case "$comm" in
+            *"$JVM_MATCH"*) basename "$p"; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# utime+stime, read past the comm field so a name with spaces cannot shift them.
+cpu_jiffies() {
+    awk '{ t = substr($0, index($0, ") ") + 2); split(t, f, " "); print f[12] + f[13] }' \
+        "/proc/$1/stat" 2>/dev/null
+}
+
+emit_jvm_metrics() {
+    local pid t0 t1 cores rss_kb rss_mb
+
+    if ! pid="$(find_jvm_pid)"; then
+        log "WARNING: no process matching '${JVM_MATCH}' - skipping JVM metrics"
+        return 0
+    fi
+
+    t0="$(cpu_jiffies "$pid")"
+    sleep "$CPU_SAMPLE_S"
+    t1="$(cpu_jiffies "$pid")"
+
+    if [[ -z "$t0" || -z "$t1" ]]; then
+        log "WARNING: could not read /proc/${pid}/stat"
+        return 0
+    fi
+
+    # Cores, not percent: >1.0 would mean the JVM is using more than one core.
+    cores="$(awk -v a="$t0" -v b="$t1" -v s="$CPU_SAMPLE_S" -v hz="$CLK_TCK" \
+        'BEGIN { printf "%.2f", (b - a) / hz / s }')"
+
+    rss_kb="$(awk '/^VmRSS:/ { print $2 }' "/proc/${pid}/status" 2>/dev/null)"
+    rss_mb="$(awk -v k="${rss_kb:-0}" 'BEGIN { printf "%.0f", k / 1024 }')"
+
+    put_metrics \
+        "MetricName=JvmCpuCores,Value=${cores},Unit=Count" \
+        "MetricName=JvmMemoryResidentMB,Value=${rss_mb},Unit=Megabytes" \
+        || log "WARNING: could not publish JVM metrics (continuing)"
+
+    log "jvm: pid ${pid}, ${cores} cores, ${rss_mb} MB resident"
+}
+
+# PZ never prunes its own logs and they are not in the backup, so they only grow.
+prune_server_logs() {
+    [[ -d "$LOG_DIR" ]] || return 0
+
+    local before after
+    before="$(du -sm "$LOG_DIR" 2>/dev/null | cut -f1)"
+
+    # busybox find here, so -exec ... \; rather than + .
+    find "$LOG_DIR" -mindepth 1 -maxdepth 1 -mtime "+${LOG_RETENTION_DAYS}" \
+        -exec rm -rf {} \; 2>/dev/null || true
+
+    after="$(du -sm "$LOG_DIR" 2>/dev/null | cut -f1)"
+    [[ -n "$after" ]] || return 0
+
+    put_metrics "MetricName=ServerLogsMB,Value=${after},Unit=Megabytes" \
+        || log "WARNING: could not publish log size metric (continuing)"
+
+    log "logs: ${after} MB (was ${before:-?} MB, keeping ${LOG_RETENTION_DAYS} days)"
+}
+
 trap 'log "signal received - exiting"; exit 0' TERM INT
 
 log "starting: every ${INTERVAL}s -> s3://${BUCKET}/${PREFIX}/ (root ${SAVE_ROOT})"
@@ -118,6 +201,8 @@ while true; do
 
     emit_volume_metric || true
     emit_host_metrics  || true
+    emit_jvm_metrics   || true
+    prune_server_logs  || true
 
     sleep "$INTERVAL" &
     wait $!
